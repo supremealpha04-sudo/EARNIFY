@@ -1,0 +1,27 @@
+{
+  "functions": {
+    "api/webhook.py": {
+      "maxDuration": 30,
+      "memory": 1024
+    }
+  },
+  "env": {
+    "VERCEL_ENV": "production"
+  },
+  "builds": [
+    {
+      "src": "api/webhook.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/webhook",
+      "dest": "/api/webhook.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/api/webhook.py"
+    }
+  ]
+}
