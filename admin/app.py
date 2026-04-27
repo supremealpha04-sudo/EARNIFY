@@ -18,59 +18,172 @@ st.set_page_config(
 # Custom CSS for modern design
 st.markdown("""
 <style>
-    .stMetric {
-        background-color: #1e1e2f;
-        padding: 15px;
+    /* Main container */
+    .main-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem;
         border-radius: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        color: white;
+        margin-bottom: 2rem;
     }
-    .big-font {
-        font-size: 30px !important;
+    
+    /* Metric cards */
+    .metric-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1.5rem;
+        border-radius: 10px;
+        color: white;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: transform 0.3s;
+    }
+    .metric-card:hover {
+        transform: translateY(-5px);
+    }
+    .metric-value {
+        font-size: 2rem;
         font-weight: bold;
+        margin: 0.5rem 0;
     }
+    .metric-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    
+    /* Status badges */
     .status-pending {
         background-color: #f39c12;
         color: white;
-        padding: 4px 8px;
+        padding: 4px 12px;
         border-radius: 20px;
         font-size: 12px;
         font-weight: bold;
+        display: inline-block;
     }
     .status-paid {
         background-color: #27ae60;
         color: white;
-        padding: 4px 8px;
+        padding: 4px 12px;
         border-radius: 20px;
         font-size: 12px;
         font-weight: bold;
+        display: inline-block;
+    }
+    .status-processing {
+        background-color: #3498db;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: bold;
+        display: inline-block;
     }
     .status-failed {
         background-color: #e74c3c;
         color: white;
-        padding: 4px 8px;
+        padding: 4px 12px;
         border-radius: 20px;
         font-size: 12px;
         font-weight: bold;
+        display: inline-block;
     }
-    div.stButton > button {
-        background-color: #3498db;
+    .status-active {
+        background-color: #27ae60;
         color: white;
-        border-radius: 5px;
-        border: none;
-        padding: 8px 16px;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
         font-weight: bold;
+        display: inline-block;
+    }
+    .status-inactive {
+        background-color: #95a5a6;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: bold;
+        display: inline-block;
+    }
+    
+    /* Buttons */
+    div.stButton > button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 20px;
+        font-weight: 600;
+        transition: all 0.3s;
     }
     div.stButton > button:hover {
-        background-color: #2980b9;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    /* Expanders */
+    .streamlit-expanderHeader {
+        background: linear-gradient(135deg, #667eea10 0%, #764ba210 100%);
+        border-radius: 10px;
+        font-weight: 600;
+    }
+    
+    /* Dataframes */
+    .dataframe {
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    
+    /* Sidebar */
+    .css-1d391kg {
+        background: linear-gradient(180deg, #1e1e2f 0%, #2d2d44 100%);
+    }
+    
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 8px;
+        padding: 8px 20px;
+        font-weight: 600;
+    }
+    
+    /* Info/Warning/Success boxes */
+    .stAlert {
+        border-radius: 10px;
+        border-left: 4px solid;
+    }
+    
+    /* Code blocks */
+    code {
+        background: #1e1e2f;
+        color: #10b981;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: 'Courier New', monospace;
+    }
+    
+    /* Animations */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in {
+        animation: fadeIn 0.5s ease-out;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # Initialize Supabase
-supabase = create_client(
-    os.getenv('SUPABASE_URL'),
-    os.getenv('SUPABASE_SERVICE_KEY')
-)
+supabase_url = st.secrets.get("SUPABASE_URL", os.getenv("SUPABASE_URL"))
+supabase_key = st.secrets.get("SUPABASE_SERVICE_KEY", os.getenv("SUPABASE_SERVICE_KEY"))
+
+if not supabase_url or not supabase_key:
+    st.error("❌ Supabase credentials not found! Please add SUPABASE_URL and SUPABASE_SERVICE_KEY to secrets.")
+    st.stop()
+
+supabase = create_client(supabase_url, supabase_key)
 
 # Authentication
 def authenticate():
@@ -79,14 +192,24 @@ def authenticate():
         st.session_state.authenticated = False
     
     if not st.session_state.authenticated:
-        st.title("🔐 Earnify Admin Login")
-        password = st.text_input("Enter admin password:", type="password")
+        st.markdown('<div class="main-header"><h1 style="margin:0">🔐 Earnify Admin Login</h1></div>', unsafe_allow_html=True)
         
-        if password == os.getenv('ADMIN_PASSWORD', 'EarnifyAdmin2024!'):
-            st.session_state.authenticated = True
-            st.rerun()
-        elif password:
-            st.error("Invalid password!")
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.markdown("---")
+            st.markdown("### Welcome Back")
+            password = st.text_input("Enter admin password:", type="password")
+            
+            if st.button("Login", use_container_width=True):
+                admin_password = st.secrets.get("ADMIN_PASSWORD", os.getenv("ADMIN_PASSWORD", "YourSecurePassword@123!"))
+                if password == admin_password:
+                    st.session_state.authenticated = True
+                    st.rerun()
+                else:
+                    st.error("❌ Invalid password!")
+            
+            st.markdown("---")
+            st.caption("🔒 Secure admin access only")
         return False
     return True
 
@@ -95,30 +218,28 @@ if not authenticate():
 
 # Sidebar
 with st.sidebar:
-    st.image("https://via.placeholder.com/150x50?text=EARNIFY", use_column_width=True)
+    st.markdown("## 💰 Earnify")
     st.markdown("---")
     
     menu = st.selectbox(
         "Navigation",
-        ["Dashboard", "Tasks", "Users", "Withdrawals", "Analytics", "Settings"],
-        format_func=lambda x: f"📊 {x}" if x == "Dashboard" else
-                             f"📋 {x}" if x == "Tasks" else
-                             f"👥 {x}" if x == "Users" else
-                             f"💰 {x}" if x == "Withdrawals" else
-                             f"📈 {x}" if x == "Analytics" else
-                             f"⚙️ {x}"
+        ["📊 Dashboard", "📋 Tasks", "👥 Users", "💰 Withdrawals", "📈 Analytics", "⚙️ Settings"],
+        format_func=lambda x: x
     )
     
     st.markdown("---")
-    st.caption(f"Logged in as Admin")
-    if st.button("🚪 Logout"):
+    st.caption(f"👑 Admin access")
+    st.caption(f"📅 {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    
+    if st.button("🚪 Logout", use_container_width=True):
         st.session_state.authenticated = False
         st.rerun()
 
-# Dashboard
-if menu == "Dashboard":
-    st.title("📊 Earnify Dashboard")
-    st.markdown(f"*Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*")
+# ============================================
+# DASHBOARD
+# ============================================
+if menu == "📊 Dashboard":
+    st.markdown('<div class="main-header"><h1 style="margin:0">📊 Earnify Dashboard</h1><p>Real-time statistics and insights</p></div>', unsafe_allow_html=True)
     
     # Get metrics
     total_users = supabase.table('users').select('telegram_id', count='exact').execute()
@@ -127,19 +248,42 @@ if menu == "Dashboard":
     pending_withdrawals = supabase.table('withdrawals').select('id', count='exact')\
         .eq('status', 'pending').execute()
     total_earned = supabase.table('users').select('total_earned').execute()
-    total_earned_sum = sum(u['total_earned'] for u in total_earned.data)
+    total_earned_sum = sum(u['total_earned'] for u in total_earned.data) if total_earned.data else 0
     
     # Metrics row
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("Total Users", f"{total_users.count:,}", delta=None)
+        st.markdown(f"""
+        <div class="metric-card">
+            <div style="font-size: 2rem;">👥</div>
+            <div class="metric-value">{total_users.count:,}</div>
+            <div class="metric-label">Total Users</div>
+        </div>
+        """, unsafe_allow_html=True)
     with col2:
-        st.metric("Active Today", f"{active_today.count:,}")
+        st.markdown(f"""
+        <div class="metric-card">
+            <div style="font-size: 2rem;">📱</div>
+            <div class="metric-value">{active_today.count:,}</div>
+            <div class="metric-label">Active Today</div>
+        </div>
+        """, unsafe_allow_html=True)
     with col3:
-        st.metric("Pending Withdrawals", f"${pending_withdrawals.count:,}", 
-                  delta="Needs action" if pending_withdrawals.count > 0 else None)
+        st.markdown(f"""
+        <div class="metric-card">
+            <div style="font-size: 2rem;">⏳</div>
+            <div class="metric-value">{pending_withdrawals.count}</div>
+            <div class="metric-label">Pending Withdrawals</div>
+        </div>
+        """, unsafe_allow_html=True)
     with col4:
-        st.metric("Total Paid Out", f"${total_earned_sum:,.2f}")
+        st.markdown(f"""
+        <div class="metric-card">
+            <div style="font-size: 2rem;">💰</div>
+            <div class="metric-value">${total_earned_sum:,.2f}</div>
+            <div class="metric-label">Total Paid Out</div>
+        </div>
+        """, unsafe_allow_html=True)
     
     st.markdown("---")
     
@@ -158,9 +302,12 @@ if menu == "Dashboard":
             daily_signups = df.groupby('date').size().reset_index(name='count')
             
             fig = px.line(daily_signups, x='date', y='count', 
-                         title='Daily Signups', markers=True)
-            fig.update_layout(height=400)
+                         title='Daily Signups', markers=True,
+                         template='plotly_dark')
+            fig.update_layout(height=400, showlegend=True)
             st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No signup data available")
     
     with col2:
         st.subheader("💰 Earnings Overview")
@@ -174,29 +321,53 @@ if menu == "Dashboard":
             daily_earnings = df.groupby('date')['points_awarded'].sum().reset_index()
             
             fig = px.bar(daily_earnings, x='date', y='points_awarded',
-                        title='Daily Earnings (USDT)', color='points_awarded')
+                        title='Daily Earnings (USDT)', color='points_awarded',
+                        template='plotly_dark', color_continuous_scale='Viridis')
             fig.update_layout(height=400)
             st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No earnings data available")
     
-    # Recent activity
-    st.subheader("🕒 Recent Activity")
-    recent_withdrawals = supabase.table('withdrawals')\
-        .select('*, users(first_name, username)')\
-        .order('requested_at', desc=True)\
-        .limit(5)\
-        .execute()
-    
-    if recent_withdrawals.data:
-        for w in recent_withdrawals.data:
-            user = w['users']
-            status_class = "status-pending" if w['status'] == 'pending' else "status-paid" if w['status'] == 'paid' else "status-failed"
-            st.info(f"💸 **{user['first_name'] or user['username']}** requested ${w['amount']:.2f} - "
-                   f"<span class='{status_class}'>{w['status'].upper()}</span>", 
-                   unsafe_allow_html=True)
+    # Recent withdrawals
+    st.subheader("🕒 Recent Withdrawal Requests")
+    try:
+        recent = supabase.table('withdrawals')\
+            .select('id, amount, status, wallet_address, requested_at, user_id')\
+            .order('requested_at', desc=True)\
+            .limit(10)\
+            .execute()
+        
+        if recent.data:
+            for w in recent.data:
+                status_class = f"status-{w['status']}" if w['status'] in ['pending', 'paid', 'processing', 'failed'] else "status-pending"
+                st.markdown(f"""
+                <div style="background: #1e1e2f; padding: 15px; border-radius: 10px; margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <span style="font-weight: bold;">#{w['id']}</span>
+                            <span style="margin-left: 15px;">💰 ${w['amount']:.2f}</span>
+                            <span style="margin-left: 15px;">👤 User: {w['user_id']}</span>
+                        </div>
+                        <div>
+                            <span class="{status_class}">{w['status'].upper()}</span>
+                            <span style="margin-left: 15px; color: #888;">{w['requested_at'][:16]}</span>
+                        </div>
+                    </div>
+                    <div style="margin-top: 8px; font-family: monospace; font-size: 12px; color: #888;">
+                        📤 {w['wallet_address'][:30]}...
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.info("No withdrawals yet")
+    except Exception as e:
+        st.warning(f"Could not load withdrawals: {str(e)[:100]}")
 
-# Tasks Management
-elif menu == "Tasks":
-    st.title("📋 Task Management")
+# ============================================
+# TASKS MANAGEMENT
+# ============================================
+elif menu == "📋 Tasks":
+    st.markdown('<div class="main-header"><h1 style="margin:0">📋 Task Management</h1><p>Create and manage earning tasks</p></div>', unsafe_allow_html=True)
     
     # Add new task
     with st.expander("➕ Create New Task", expanded=False):
@@ -238,7 +409,7 @@ elif menu == "Tasks":
                     'instructions': instructions,
                     'icon_emoji': icon_emoji,
                     'expires_at': expires_at.isoformat(),
-                    'created_by': 0  # System
+                    'is_active': True
                 }
                 
                 result = supabase.table('tasks').insert(new_task).execute()
@@ -260,37 +431,37 @@ elif menu == "Tasks":
                 col1, col2, col3, col4, col5 = st.columns([3, 1.5, 1, 1, 1])
                 with col1:
                     st.markdown(f"**{task['icon_emoji']} {task['title']}**")
-                    st.caption(task.get('short_description', task['description'][:60]))
+                    st.caption(task.get('short_description', task['description'][:60] if task['description'] else ''))
                 with col2:
                     st.metric("Reward", f"${task['reward']:.2f}")
                     st.caption(f"Type: {task['task_type']}")
                 with col3:
                     st.metric("Completions", f"{task['total_completions']:,}")
-                    if task['max_completions']:
-                        st.caption(f"Max: {task['max_completions']}")
                 with col4:
-                    status = "✅ Active" if task['is_active'] else "❌ Inactive"
-                    st.markdown(f"**Status**\n{status}")
+                    status_class = "status-active" if task['is_active'] else "status-inactive"
+                    status_text = "Active" if task['is_active'] else "Inactive"
+                    st.markdown(f'<span class="{status_class}">{status_text}</span>', unsafe_allow_html=True)
                 with col5:
                     if st.button("🔄 Toggle", key=f"toggle_{task['id']}", use_container_width=True):
                         supabase.table('tasks').update({
                             'is_active': not task['is_active']
                         }).eq('id', task['id']).execute()
                         st.rerun()
-                    if st.button("✏️ Edit", key=f"edit_{task['id']}", use_container_width=True):
-                        st.session_state.edit_task = task
-                        st.rerun()
                 st.divider()
+    else:
+        st.info("No tasks found. Create your first task above!")
 
-# User Management
-elif menu == "Users":
-    st.title("👥 User Management")
+# ============================================
+# USERS MANAGEMENT
+# ============================================
+elif menu == "👥 Users":
+    st.markdown('<div class="main-header"><h1 style="margin:0">👥 User Management</h1><p>Manage users, balances, and permissions</p></div>', unsafe_allow_html=True)
     
     # Search
-    search_col1, search_col2 = st.columns([3, 1])
-    with search_col1:
+    col1, col2 = st.columns([3, 1])
+    with col1:
         search_term = st.text_input("🔍 Search Users", placeholder="Telegram ID, Username, or First Name")
-    with search_col2:
+    with col2:
         show_banned = st.checkbox("Show Banned Users", value=False)
     
     # Query users
@@ -315,95 +486,80 @@ elif menu == "Users":
                 col1, col2, col3 = st.columns(3)
                 
                 with col1:
-                    st.write("**📋 Basic Info**")
+                    st.markdown("**📋 Basic Info**")
                     st.write(f"ID: `{user['telegram_id']}`")
                     st.write(f"Username: @{user['username'] or 'N/A'}")
-                    st.write(f"Joined: {user['created_at'][:10]}")
-                    st.write(f"Last Active: {user['last_active'][:16] if user['last_active'] else 'N/A'}")
+                    st.write(f"Joined: {user['created_at'][:10] if user['created_at'] else 'N/A'}")
+                    st.write(f"Last Active: {user['last_active'][:16] if user.get('last_active') else 'N/A'}")
                 
                 with col2:
-                    st.write("**💰 Financial**")
+                    st.markdown("**💰 Financial**")
                     st.write(f"Balance: **${user['balance']:.2f}**")
                     st.write(f"Total Earned: ${user['total_earned']:.2f}")
                     st.write(f"Total Withdrawn: ${user['total_withdrawn']:.2f}")
                     st.write(f"Referral Code: `{user['referral_code']}`")
                 
                 with col3:
-                    st.write("**📊 Stats**")
+                    st.markdown("**📊 Stats**")
                     st.write(f"Daily Streak: {user['daily_streak']} days")
-                    st.write(f"Banned: {'⚠️ Yes' if user['is_banned'] else '✅ No'}")
-                    st.write(f"Admin: {'👑 Yes' if user['is_admin'] else '❌ No'}")
+                    status_class = "status-active" if not user['is_banned'] else "status-failed"
+                    status_text = "Active" if not user['is_banned'] else "Banned"
+                    st.markdown(f"Status: <span class='{status_class}'>{status_text}</span>", unsafe_allow_html=True)
+                    st.write(f"Admin: {'👑 Yes' if user.get('is_admin') else '❌ No'}")
                 
                 # Actions
-                st.write("**🛠️ Actions**")
+                st.markdown("**🛠️ Actions**")
                 action_col1, action_col2, action_col3 = st.columns(3)
                 
                 with action_col1:
-                    adjust_amount = st.number_input(f"Adjust Balance", 
-                                                   step=0.01, 
-                                                   key=f"adjust_{user['telegram_id']}",
-                                                   label_visibility="collapsed")
+                    adjust_amount = st.number_input(f"Adjust Balance", step=0.01, key=f"adjust_{user['telegram_id']}", label_visibility="collapsed")
                     if st.button(f"Apply", key=f"apply_{user['telegram_id']}", use_container_width=True):
                         new_balance = user['balance'] + adjust_amount
-                        supabase.table('users').update({
-                            'balance': new_balance
-                        }).eq('telegram_id', user['telegram_id']).execute()
+                        supabase.table('users').update({'balance': new_balance}).eq('telegram_id', user['telegram_id']).execute()
                         st.success(f"Balance updated to ${new_balance:.2f}")
                         st.rerun()
                 
                 with action_col2:
-                    if not user['is_banned']:
+                    if not user.get('is_banned', False):
                         if st.button(f"🚫 Ban User", key=f"ban_{user['telegram_id']}", use_container_width=True):
-                            supabase.table('users').update({
-                                'is_banned': True
-                            }).eq('telegram_id', user['telegram_id']).execute()
-                            st.warning(f"User {user['telegram_id']} has been banned")
+                            supabase.table('users').update({'is_banned': True}).eq('telegram_id', user['telegram_id']).execute()
                             st.rerun()
                     else:
                         if st.button(f"✅ Unban User", key=f"unban_{user['telegram_id']}", use_container_width=True):
-                            supabase.table('users').update({
-                                'is_banned': False
-                            }).eq('telegram_id', user['telegram_id']).execute()
-                            st.success(f"User {user['telegram_id']} has been unbanned")
+                            supabase.table('users').update({'is_banned': False}).eq('telegram_id', user['telegram_id']).execute()
                             st.rerun()
-                
-                with action_col3:
-                    if st.button(f"📜 View History", key=f"history_{user['telegram_id']}", use_container_width=True):
-                        st.session_state.selected_user = user['telegram_id']
-                        st.rerun()
     else:
         st.info("No users found")
 
-# Withdrawals Management
-elif menu == "Withdrawals":
-    st.title("💰 Withdrawal Management")
-    st.markdown("*Manual USDT (BEP-20) Processing*")
+# ============================================
+# WITHDRAWALS MANAGEMENT
+# ============================================
+elif menu == "💰 Withdrawals":
+    st.markdown('<div class="main-header"><h1 style="margin:0">💰 Withdrawal Management</h1><p>Manual USDT (BEP-20) Processing</p></div>', unsafe_allow_html=True)
     
     # Tabs for different statuses
     tab1, tab2, tab3, tab4 = st.tabs(["⏳ Pending", "🔄 Processing", "✅ Paid", "❌ Failed"])
     
     with tab1:
         pending = supabase.table('withdrawals')\
-            .select('*, users(first_name, username)')\
+            .select('*')\
             .eq('status', 'pending')\
             .order('requested_at', asc=True)\
             .execute()
         
         if pending.data:
             for w in pending.data:
-                user = w['users']
                 with st.container():
                     st.markdown(f"### Withdrawal #{w['id']}")
                     col1, col2 = st.columns(2)
                     
                     with col1:
-                        st.write(f"**User:** {user['first_name'] or user['username']}")
-                        st.write(f"**Telegram ID:** `{w['user_id']}`")
+                        st.write(f"**User ID:** `{w['user_id']}`")
                         st.write(f"**Amount:** 💰 **${w['amount']:.2f} USDT**")
-                        st.write(f"**Network:** {w['network']}")
+                        st.write(f"**Network:** {w.get('network', 'BEP-20')}")
                     
                     with col2:
-                        st.write(f"**Requested:** {w['requested_at'][:19]}")
+                        st.write(f"**Requested:** {w['requested_at'][:19] if w['requested_at'] else 'N/A'}")
                         st.write(f"**Wallet Address:**")
                         st.code(w['wallet_address'], language='text')
                     
@@ -411,10 +567,7 @@ elif menu == "Withdrawals":
                     col1, col2, col3 = st.columns(3)
                     
                     with col1:
-                        tx_hash = st.text_input(f"Transaction Hash", 
-                                               placeholder="0x...", 
-                                               key=f"tx_{w['id']}",
-                                               label_visibility="collapsed")
+                        tx_hash = st.text_input(f"Transaction Hash", placeholder="0x...", key=f"tx_{w['id']}", label_visibility="collapsed")
                     
                     with col2:
                         if st.button(f"✅ Mark as Paid", key=f"pay_{w['id']}", use_container_width=True):
@@ -426,8 +579,7 @@ elif menu == "Withdrawals":
                             if tx_hash:
                                 update_data['transaction_hash'] = tx_hash
                             
-                            supabase.table('withdrawals').update(update_data)\
-                                .eq('id', w['id']).execute()
+                            supabase.table('withdrawals').update(update_data).eq('id', w['id']).execute()
                             
                             # Update user's total withdrawn
                             supabase.table('users').update({
@@ -435,28 +587,23 @@ elif menu == "Withdrawals":
                             }).eq('telegram_id', w['user_id']).execute()
                             
                             # Send notification to user
-                            bot_token = os.getenv('BOT_TOKEN')
-                            import requests
-                            notification = f"""
-✅ *Withdrawal Completed!*
+                            bot_token = st.secrets.get("BOT_TOKEN", os.getenv("BOT_TOKEN", ""))
+                            if bot_token:
+                                import requests
+                                notification = f"""✅ *Withdrawal Completed!*
 
 💰 Amount: *${w['amount']:.2f} USDT*
 🌐 Network: BEP-20
 📤 Sent to: `{w['wallet_address'][:10]}...{w['wallet_address'][-6:]}`
 
-{'📝 Transaction: `' + tx_hash + '`' if tx_hash else ''}
+{f'📝 Transaction: `{tx_hash}`' if tx_hash else ''}
 
-Thank you for using Earnify! 🎉
-                            """
-                            try:
-                                url = f'https://api.telegram.org/bot{bot_token}/sendMessage'
-                                requests.post(url, json={
-                                    'chat_id': w['user_id'],
-                                    'text': notification,
-                                    'parse_mode': 'Markdown'
-                                })
-                            except:
-                                pass
+Thank you for using Earnify! 🎉"""
+                                try:
+                                    requests.post(f'https://api.telegram.org/bot{bot_token}/sendMessage', 
+                                                json={'chat_id': w['user_id'], 'text': notification, 'parse_mode': 'Markdown'})
+                                except:
+                                    pass
                             
                             st.success(f"Withdrawal #{w['id']} marked as paid!")
                             st.rerun()
@@ -482,36 +629,34 @@ Thank you for using Earnify! 🎉
     
     with tab2:
         processing = supabase.table('withdrawals')\
-            .select('*, users(first_name, username)')\
+            .select('*')\
             .eq('status', 'processing')\
             .order('processed_at', desc=True)\
             .execute()
         
         if processing.data:
             for w in processing.data:
-                st.write(f"#{w['id']}: ${w['amount']:.2f} - {w['users']['first_name']} - Processing since {w['processed_at'][:16]}")
+                st.info(f"#{w['id']}: ${w['amount']:.2f} - Processing since {w.get('processed_at', '')[:16] if w.get('processed_at') else 'N/A'}")
         else:
             st.info("No withdrawals in processing")
     
     with tab3:
         paid = supabase.table('withdrawals')\
-            .select('*, users(first_name, username)')\
+            .select('*')\
             .eq('status', 'paid')\
             .order('paid_at', desc=True)\
             .limit(50)\
             .execute()
         
         if paid.data:
-            df = pd.DataFrame(paid.data)
-            df['user_name'] = df['users'].apply(lambda x: x['first_name'] or x['username'])
-            st.dataframe(df[['id', 'user_name', 'amount', 'paid_at', 'transaction_hash']], 
-                        use_container_width=True)
+            for w in paid.data:
+                st.success(f"#{w['id']}: ${w['amount']:.2f} - Paid on {w.get('paid_at', '')[:10] if w.get('paid_at') else 'N/A'}")
         else:
             st.info("No paid withdrawals yet")
     
     with tab4:
         failed = supabase.table('withdrawals')\
-            .select('*, users(first_name, username)')\
+            .select('*')\
             .eq('status', 'failed')\
             .order('requested_at', desc=True)\
             .limit(50)\
@@ -519,13 +664,15 @@ Thank you for using Earnify! 🎉
         
         if failed.data:
             for w in failed.data:
-                st.warning(f"#{w['id']}: ${w['amount']:.2f} - {w['users']['first_name']} - {w['admin_notes']}")
+                st.error(f"#{w['id']}: ${w['amount']:.2f} - {w.get('admin_notes', 'No reason provided')}")
         else:
             st.info("No failed withdrawals")
 
-# Analytics
-elif menu == "Analytics":
-    st.title("📈 Advanced Analytics")
+# ============================================
+# ANALYTICS
+# ============================================
+elif menu == "📈 Analytics":
+    st.markdown('<div class="main-header"><h1 style="margin:0">📈 Advanced Analytics</h1><p>Deep insights and performance metrics</p></div>', unsafe_allow_html=True)
     
     # Date range selector
     col1, col2 = st.columns(2)
@@ -552,17 +699,22 @@ elif menu == "Analytics":
         
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=daily['date'], y=daily['cumulative'], 
-                                mode='lines+markers', name='Total Users'))
+                                mode='lines+markers', name='Total Users',
+                                line=dict(color='#667eea', width=3)))
         fig.add_trace(go.Bar(x=daily['date'], y=daily['new_users'], 
-                            name='New Users', yaxis='y2'))
+                            name='New Users', yaxis='y2',
+                            marker_color='#764ba2'))
         fig.update_layout(
             title='User Growth Over Time',
             xaxis_title='Date',
             yaxis_title='Cumulative Users',
             yaxis2=dict(title='New Users', overlaying='y', side='right'),
-            height=500
+            height=500,
+            template='plotly_dark'
         )
         st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("No user data available")
     
     # Earnings distribution
     st.subheader("💰 Earnings Distribution")
@@ -574,60 +726,53 @@ elif menu == "Analytics":
     
     if earnings_by_task.data:
         df = pd.DataFrame(earnings_by_task.data)
-        df['task_title'] = df['tasks'].apply(lambda x: x['title'])
+        df['task_title'] = df['tasks'].apply(lambda x: x['title'] if x else 'Unknown')
         task_earnings = df.groupby('task_title')['points_awarded'].sum().reset_index()
         task_earnings = task_earnings.sort_values('points_awarded', ascending=True).tail(10)
         
         fig = px.bar(task_earnings, x='points_awarded', y='task_title', 
                     orientation='h', title='Top Tasks by Earnings',
-                    labels={'points_awarded': 'USDT Earned', 'task_title': 'Task'})
+                    labels={'points_awarded': 'USDT Earned', 'task_title': 'Task'},
+                    template='plotly_dark', color='points_awarded',
+                    color_continuous_scale='Viridis')
         fig.update_layout(height=500)
         st.plotly_chart(fig, use_container_width=True)
-    
-    # Referral performance
-    st.subheader("👥 Referral Performance")
-    top_referrers = supabase.table('users')\
-        .select('first_name, username, referral_earnings')\
-        .gt('referral_earnings', 0)\
-        .order('referral_earnings', desc=True)\
-        .limit(10)\
-        .execute()
-    
-    if top_referrers.data:
-        df = pd.DataFrame(top_referrers.data)
-        df['name'] = df['first_name'] + ' (@' + df['username'] + ')'
-        fig = px.bar(df, x='referral_earnings', y='name', 
-                    title='Top Referrers', orientation='h')
-        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("No earnings data available")
 
-# Settings
-elif menu == "Settings":
-    st.title("⚙️ System Settings")
+# ============================================
+# SETTINGS
+# ============================================
+elif menu == "⚙️ Settings":
+    st.markdown('<div class="main-header"><h1 style="margin:0">⚙️ System Settings</h1><p>Configure bot and withdrawal parameters</p></div>', unsafe_allow_html=True)
     
-    st.info("These settings can be configured in the `.env` file")
+    st.info("🔧 These settings are configured in the `.streamlit/secrets.toml` file or Vercel environment variables")
     
     col1, col2 = st.columns(2)
     with col1:
         st.subheader("💰 Withdrawal Settings")
+        min_withdrawal = st.secrets.get("MIN_WITHDRAWAL_USDT", os.getenv("MIN_WITHDRAWAL_USDT", "5.00"))
+        usdt_network = st.secrets.get("USDT_NETWORK", os.getenv("USDT_NETWORK", "BEP-20"))
         st.code(f"""
-MIN_WITHDRAWAL_USDT = {os.getenv('MIN_WITHDRAWAL_USDT', '5')}
-USDT_NETWORK = {os.getenv('USDT_NETWORK', 'BEP-20')}
+MIN_WITHDRAWAL_USDT = "{min_withdrawal}"
+USDT_NETWORK = "{usdt_network}"
         """)
         
         st.subheader("👥 Admin Settings")
-        st.code(f"""
-ADMIN_IDS = {os.getenv('ADMIN_IDS', '123456789')}
-        """)
+        admin_ids = os.getenv("ADMIN_IDS", "Not set")
+        st.code(f"ADMIN_IDS = {admin_ids}")
     
     with col2:
         st.subheader("🤖 Bot Settings")
+        bot_username = st.secrets.get("BOT_USERNAME", os.getenv("BOT_USERNAME", "earnify_bot"))
+        environment = os.getenv("ENVIRONMENT", "production")
         st.code(f"""
-BOT_USERNAME = {os.getenv('BOT_USERNAME', 'earnify_bot')}
-ENVIRONMENT = {os.getenv('ENVIRONMENT', 'production')}
+BOT_USERNAME = "{bot_username}"
+ENVIRONMENT = "{environment}"
         """)
     
-    st.warning("⚠️ Changes require restarting the application")
+    st.warning("⚠️ Changes require updating the secrets file and restarting the application")
 
 # Footer
 st.markdown("---")
-st.caption(f"Earnify Admin Panel v2.0 | © 2024")
+st.markdown(f"<center><small>Earnify Admin Panel v2.0 | © 2024 | Built with ❤️</small></center>", unsafe_allow_html=True)
