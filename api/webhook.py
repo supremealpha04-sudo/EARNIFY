@@ -5,6 +5,8 @@ from http.server import BaseHTTPRequestHandler
 from telegram import Update, Bot
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters
 from dotenv import load_dotenv
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Load environment variables
 load_dotenv()
@@ -20,7 +22,7 @@ from bot.handlers.callbacks import handle_callback, handle_message
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize bot and application
+# Initialize bot
 bot = Bot(token=os.getenv('BOT_TOKEN'))
 application = Application.builder().token(os.getenv('BOT_TOKEN')).build()
 
@@ -60,3 +62,7 @@ class handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.end_headers()
         self.wfile.write(b'Earnify Bot is running!')
+    
+    def log_message(self, format, *args):
+        """Override to use custom logger"""
+        logger.info(f"{self.address_string()} - {format % args}")
